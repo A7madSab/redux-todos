@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/redux/3.7.2/redux.min.js"></script>
+  <script src="https://unpkg.com/react@16.3.0-alpha.1/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@16.3.0-alpha.1/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+  <script src="https://tylermcginnis.com/goals-todos-api/index.js"></script>
+  <script src="https://unpkg.com/redux-thunk@2.2.0/dist/redux-thunk.min.js"></script>
+
+  <title> Redux & React </title>
+</head>
+
+<body>
+  <div id="app"></div>
+
+  <script type="text/javascript">
+    const ADD_GOAL = "ADD_GOAL"
+    const REMOVE_GOAL = "REMOVE_GOAL"
+    const REMOVE_TODO = "REMOVE_TODO"
+    const ADD_TODO = "ADD_TODO"
+    const TOGGLE_TODO = "TOGGLE_TODO"
+    const RECIEVE_DATA = "RECIEVE_DATA"
+
+    function generateid() {
+      return Math.random().toString().substring(2) + (new Date()).getTime().toString();
+    }
+
+    /**
+     * reducer function  because it takes the state and the action and 
+     * reduces it to a new state and must be a pure function
+     */
+    function todos(state = [], action) {
+      switch (action.type) {
+        case ADD_TODO:
+          return state.concat([action.todo])
+        case REMOVE_TODO:
+          return state.filter((todo) => todo.id !== action.id)
+        case TOGGLE_TODO:
+          return state.map((todo) => todo.id !== action.id ? todo :
+            Object.assign({}, todo, { complete: !todo.complete }))
+        case RECIEVE_DATA:
+          return action.todos
+        default:
+          return state
+      }
+    }
+    function loading(state = true, action) {
+      switch (action.type) {
+        case RECIEVE_DATA:
+          return false
+        default:
+          return state
+      }
+
+    }
+    /**
+     * reducer function  because it takes the state and the action and 
+     * reduces it to a new state and must be a pure function
+     */
+    function goals(state = [], action) {
+      switch (action.type) {
+        case ADD_GOAL:
+          return state.concat([action.goal])
+        case REMOVE_GOAL:
+          return state.filter((goal) => goal.id !== action.id)
+        case RECIEVE_DATA:
+          return action.goals
+        default:
+          return state
+      }
+    }
+
+    // Action creator
+    const addTodoAction = (todo) => ({
+      type: ADD_TODO,
+      todo
+    })
+
+    const recieveDataAction = (todos, goals) => ({
+      type: RECIEVE_DATA,
+      todos,
+      goals
+    })
+
+    const removeTodoAction = (id) => ({
+      type: REMOVE_TODO,
+      id
+    })
+
+    const toggleTodoAction = (id) => ({
+      type: TOGGLE_TODO,
+      id
+    })
+
+    const addGoalAction = (goal) => ({
+      type: ADD_GOAL,
+      goal
+    })
+
+    const removeGoalAction = (id) => ({
+      type: REMOVE_GOAL,
+      id
+    })
+
+    const handleAddTodo = (todo, cb) => dispatch => {
+      return API.saveTodo(todo)
+        .then(todo => {
+          dispatch(addTodoAction(todo))
+          cb()
+        })
+        .catch(() => {
+          alert("error add again")
+        })
+    }
+
+
+    const handleAddGoal = (name, func) => {
+      return dispatch => {
+        return API.saveGoal(name)
+          .then(goal => {
+            dispatch(addGoalAction(goal))
+            func()
+          })
+          .catch(() => {
+            alert("error try again")
+          })
+
+      }
+    }
+
+    const handleDeleteTodo = (todo) => {
+      return (dispatch) => {
+        dispatch(removeTodoAction(todo.id))
+
+        return API.deleteTodo(todo.id)
+          .catch(() => {
+            dispatch(addTodoAction(todo))
+            alert("Some error occurred")
+          })
+      }
+    }
+
+    const handleToggleTodo = (id) => {
+      return (dispatch) => {
+        dispatch(toggleTodoAction(id))
+
+        API.saveTodoToggle(id)
+          .catch(() => {
+            dispatch(toggleTodoAction(id))
+            alert("Some error occurred")
+          })
+      }
+    }
+
+    const handleRemoveGoal = goal => dispatch => {
+      dispatch(removeGoalAction(goal.id))
+      API.deleteGoal(goal.id)
+        .catch(() => {
+          dispatch(removeGoalAction(goal.id))
+          alert('error occured')
+        })
+    }
+
+    const handleInitialData = () => dispatch => {
+      return Promise.all([
+        API.fetchTodos(),
+        API.fetchGoals()
+      ]).then(([todos, goals]) => {
+        dispatch(recieveDataAction(todos, goals))
+      })
+    }
+
+
+    confirmGoalMessage = store => next => action => {
+      if (action.type === ADD_GOAL) {
+        alert("That's a great goal!")
+      }
+      return next(action)
+    }
+
+    confirmTodoMessage = store => next => action => {
+      if (action.type === ADD_TODO) {
+        alert(`Don't forget to ${action.todo.name}`)
+      }
+      return next(action)
+    }
+
+    checker = store => next => action => {
+      if (
+        action.type === ADD_TODO &&
+        action.todo.name.toLowerCase().includes("gym")
+      ) {
+        return alert("not again")
+      }
+      return next(action)
+    }
+
+    logger = store => next => action => {
+      console.group(action.type)
+      console.log("The Action", action)
+      const result = next(action)
+      console.log("The New State is: ", store.getState())
+      console.groupEnd()
+      return result
+    }
+
+    const store = Redux.createStore(Redux.combineReducers({
+      goals,
+      todos,
+      loading
+    }), Redux.applyMiddleware(
+      ReduxThunk.default,
+      checker
+    ))
+
+  </script>
+  <script type="text/babel">
+
+      function List (props) {
+        return (
+          <ul>
+            <li>List</li>
+            {props.items.map((item) => (
+              <li key={item.id} >
+                <span 
+                  onClick={()=> props.toggleItem && props.toggleItem(item.id  )}
+                  style={{textDecoration: item.complete ? "line-through": "none"}}
+                >
+                    {item.name}
+                </span>
+                <button onClick={() =>props.removeItem(item)}>X</button>
+              </li> 
+            ))}
+          </ul>
+        )
+      }
+      class Todos extends React.Component {
+        addItem = () =>{
+          this.props.store.dispatch(handleAddTodo(this.input.value, () => this.input = '' ))
+        }
+        
+        removeItem = (todo) => {
+          this.props.store.dispatch(handleDeleteTodo(todo))
+        }
+
+        toggleItem = (id) =>{
+          this.props.store.dispatch(handleToggleTodo(id))
+        }
+
+        render(){
+          return (
+            <div>
+              <h3>TODOS</h3>
+              <input
+                type="text"
+                placeholder="Add Todos"
+                ref={(input) => this.input = input}
+              ></input>
+              <button onClick={this.addItem}> Addtodo </button>
+              <List toggleItem={this.toggleItem} removeItem={this.removeItem} items={this.props.todos} />
+            </div>
+          )
+        }
+      }
+      class Goals extends React.Component {
+        addItem = (e) => {
+          this.props.store.dispatch(handleAddGoal( this.input.value, () => this.input.value = '' ))
+        }
+
+        removeItem = goal => {
+          this.props.store.dispatch(handleRemoveGoal(goal))
+        }
+
+        render(){
+          return (
+            <div>
+              <h3>Goals</h3>
+              <input
+                type="text"
+                placeholder="Add goals"
+                ref={(input) => this.input = input}
+              ></input>
+              <button onClick={this.addItem}> AddGoal </button>
+              <List removeItem={this.removeItem} items={this.props.goals} />
+            </div>
+          )
+        }
+      }
+      class App extends React.Component {
+        componentDidMount() {
+          const {store} = this.props
+          store.dispatch(handleInitialData())
+          store.subscribe(()=>this.forceUpdate())
+        }
+
+        initial
+        render(){
+          const { store } = this.props
+          const {todos, goals, loading} = store.getState()
+          if (loading === true) return <h2>Loading</h2>
+          return (
+            <div>
+              <Todos todos={todos} store={store} />
+              <Goals goals={goals} store={store} />
+            </div>
+          )
+        }
+      }
+
+      ReactDOM.render(
+        <App store={store} />, 
+        document.getElementById("app")
+      )
+    </script>
+</body>
+
+</html>
